@@ -1,0 +1,19 @@
+# Train/val/test sets as 1) dir: path/to/imgs, 2) file: path/to/imgs.txt, or 3) list: [path/to/imgs1, path/to/imgs2, ..]
+path: C:\\match\\Amatch-model\\ultralytics-main\\demo
+train: train_fea/train/images
+val: train_fea/val/images
+
+
+nc: 8
+names: ['boundary_0','boundary_1','calcification_0','calcification_1','direction_0','direction_1','shape_0','shape_1']
+
+lr0: 0.1
+lrf: 0.1
+
+# 其他优化器参数
+momentum: 0.937
+weight_decay: 0.0005
+
+# 学习率调度策略
+optimizer: SGD       # 使用SGD优化器
+lr_schedule: linear  # 使用线性衰减策略

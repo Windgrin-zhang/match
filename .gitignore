@@ -1,2 +1,10 @@
 *.jpg
 *.jpeg
+<<<<<<< HEAD
+=======
+*.png
+*.gif
+*.txt
+*.onnx
+*.pt
+>>>>>>> c37bc58 (add .)

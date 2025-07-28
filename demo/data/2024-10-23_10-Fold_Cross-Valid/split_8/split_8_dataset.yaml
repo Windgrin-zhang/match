@@ -1,0 +1,9 @@
+names:
+- '2'
+- '3'
+- 4a
+- 4b
+- 4c
+- '5'
+train: C:/match/Amatch-model/ultralytics-main/demo/data/2024-10-23_10-Fold_Cross-Valid/split_8/train/images
+val: C:/match/Amatch-model/ultralytics-main/demo/data/2024-10-23_10-Fold_Cross-Valid/split_8/val/images
