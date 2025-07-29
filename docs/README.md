@@ -1,1 +1,211 @@
 
+# 乳腺图像分类与特征检测系统运行流程
+
+## 项目概述
+
+本项目是一个基于YOLOv8的乳腺图像分类与特征检测系统，包含两个主要任务：
+1. **分类任务（Classification）**：对乳腺图像进行6类分类（2，3，4A, 4B, 4C, 5）
+2. **特征检测任务（Feature Detection）**：检测乳腺图像的4个特征（边界、钙化、方向、形状）
+
+## 环境要求
+
+### 个人实现环境
+- Python 3.12.7
+- Windows 11
+- CUDA 11.8（GPU加速，可选）
+
+### 个人使用核心依赖包
+```bash
+ultralytics==8.3.7          # YOLOv8框架
+torch==2.4.1               # PyTorch深度学习框架
+opencv-python==4.10.0.84   # 图像处理
+pandas==2.2.3              # 数据处理
+scikit-learn               # 机器学习评估
+optuna                     # 超参数优化（可选）
+```
+
+
+## 运行流程
+
+### 第一阶段：数据预处理
+
+#### 1. 训练数据汇总 (`huizong.py`)
+**功能**：将分散的训练数据汇总到统一目录
+```python
+# 执行命令
+python demo/huizong.py
+
+# 主要功能：
+# - 将train_cla/train中的所有图片和标签汇总到Real_train
+# - 随机选择1/10数据作为验证集
+# - 标签数值减1（从1-6调整为0-5）为后期模型做映射准备
+```
+
+#### 2. 测试数据汇总 (`huizongA.py`)
+**功能**：汇总测试数据
+```python
+# 执行命令
+python demo/huizongA.py
+
+# 主要功能：
+# - 将test_A/A_test_cla/A中的图片和标签汇总到Real_A
+```
+
+#### 3. 生成真实标签 (`huizong_cla__gt.py`)
+**功能**：生成分类任务的真实标签CSV文件
+```python
+# 执行命令
+python demo/huizong_cla__gt.py
+
+# 输出文件：
+# - runs/csv/cla_gt.csv：分类真实标签
+```
+
+#### 4. 创建特征验证集 (`create_fea_val.py`)
+**功能**：为特征检测任务创建验证集
+```python
+# 执行命令
+python demo/create_fea_val.py
+
+# 主要功能：
+# - 从训练集中随机选择1/10数据作为验证集
+# - 合并4个特征的标签文件
+# - 标签值转换：boundary(0-1), calcification(2-3), direction(4-5), shape(6-7)
+```
+
+#### 5. K折交叉验证（可选）(`k-fold-train.py`)（当时对模型并不熟悉）
+**功能**：创建K折交叉验证数据集
+```bash
+# 执行命令
+python demo/k-fold-train.py --data ./data --ksplit 10
+
+# 参数说明：
+# --data：数据集路径
+# --ksplit：K折数量（默认10）
+```
+
+### 第二阶段：模型训练
+
+#### 6. 分类模型训练 (`train_cla.py`)
+**功能**：训练乳腺图像分类模型
+```python
+# 执行命令
+python demo/train_cla.py
+
+# 训练配置：
+# - 模型：YOLOv8n
+# - 数据：A_cla.yaml
+# - 类别：6类（0-5对应2-4A, 4B, 4C, 5）
+# - 优化：贝叶斯优化（Optuna）
+# - 参数：学习率、HSV饱和度、对比度
+```
+相关yaml文件配置
+```yaml
+# A_cla.yaml
+# Train/val/test sets as 1) dir: path/to/imgs, 2) file: path/to/imgs.txt, or 3) list: [path/to/imgs1, path/to/imgs2, ..]
+path: C:\\match\\Amatch-model\\ultralytics-main\\demo
+train: train_cla/Real_train/images
+val: train_cla/val/images
+
+
+nc: 6
+names: ['2','3','4a','4b','4c','5']
+
+lr0: 0.1
+lrf: 0.1
+
+
+# 学习率调度策略
+optimizer: SGD       # 使用SGD优化器
+lr_schedule: linear  # 使用线性衰减策略
+```
+
+#### 7. 特征检测模型训练 (`train_fea.py`)
+**功能**：训练乳腺图像特征检测模型
+```python
+# 执行命令
+python demo/train_fea.py
+
+# 训练配置：
+# - 模型：YOLOv8n
+# - 数据：A_fea.yaml
+# - 类别：8类（4个特征×2个值）
+# - 优化：贝叶斯优化（Optuna）
+# - 参数：学习率、HSV饱和度、对比度
+```
+相关yaml文件配置
+```yaml
+# A_fea.yaml
+# Train/val/test sets as 1) dir: path/to/imgs, 2) file: path/to/imgs.txt, or 3) list: [path/to/imgs1, path/to/imgs2, ..]
+path: C:\\match\\Amatch-model\\ultralytics-main\\demo
+train: train_fea/train/images
+val: train_fea/val/images
+
+
+nc: 8
+names: ['boundary_0','boundary_1','calcification_0','calcification_1','direction_0','direction_1','shape_0','shape_1']
+
+lr0: 0.1
+lrf: 0.1
+
+# 其他优化器参数
+momentum: 0.937
+weight_decay: 0.0005
+
+# 学习率调度策略
+optimizer: SGD       # 使用SGD优化器
+lr_schedule: linear  # 使用线性衰减策略
+```
+
+
+### 第三阶段：模型测试
+
+#### 8. 分类模型测试 (`test_cla.py`)
+**功能**：使用训练好的分类模型进行预测
+```python
+# 执行命令
+python demo/test_cla.py
+
+# 主要功能：
+# - 加载训练好的分类模型
+# - 对测试图像进行预测
+# - 输出预测结果到CSV文件
+# - 输出文件：runs/csv/cla_pre.csv
+```
+
+#### 9. 特征检测模型测试 (`test.py`)
+**功能**：使用训练好的特征检测模型进行预测
+```python
+# 执行命令
+python demo/test.py
+
+# 主要功能：
+# - 加载训练好的特征检测模型
+# - 对测试图像进行预测
+# - 输出4个特征的预测结果
+# - 输出文件：runs/csv/fea_pre.csv
+```
+
+#### 10. 生成特征真实标签 (`test_A/create_csv.py`)
+**功能**：生成特征检测任务的真实标签
+```python
+# 执行命令
+python demo/test_A/create_csv.py
+
+# 输出文件：
+# - runs/csv/fea_gt.csv：特征真实标签
+```
+
+### 第四阶段：结果评估
+
+#### 11. 模型性能评估 (`score.py`)
+**功能**：计算模型性能指标（准确率、时间）
+```python
+# 执行命令
+python demo/score.py
+
+# 评估指标：
+# - 分类任务：准确率、F1分数
+# - 特征检测：各特征准确率、F1分数
+# - 最终得分：0.3×(分类准确率+特征平均准确率) + 0.2×(分类F1+特征平均F1)
+```
